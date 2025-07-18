@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Malla Curricular Interactiva - Profesorado de Matemática</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f9f6f8;
+      color: #333;
+      margin: 0;
+      padding: 2rem;
+    }
+
+    h1 {
+      text-align: center;
+      color: #9b4d7a;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .column {
+      background-color: #fceef4;
+      padding: 1rem;
+      border-radius: 8px;
+    }
+
+    .column h2 {
+      text-align: center;
+      color: #b35d8d;
+    }
+
+    .subject {
+      background-color: #ffe4ec;
+      border: 1px solid #f5c6da;
+      border-radius: 6px;
+      padding: 0.5rem;
+      margin: 0.3rem 0;
+      cursor: pointer;
+      position: relative;
+      transition: background-color 0.3s;
+    }
+
+    .subject.locked {
+      background-color: #f4f1f2;
+      border-color: #ccc;
+      color: #aaa;
+      cursor: not-allowed;
+    }
+
+    .subject.approved {
+      text-decoration: line-through;
+      background-color: #d4f4dd;
+      color: #558866;
+    }
+
+    .subject:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: #333;
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <h1>Malla Curricular - Profesorado de Matemática</h1>
+  <div class="grid" id="grid"></div>
+
+  <script>
+    const data = {
+      "1er Año": [
+        "Pedagogía",
+        "Didáctica General",
+        "Psicología Educacional",
+        "Lectura, Escritura y Oralidad",
+        "Problemática de la Educación Secundaria",
+        "Elementos de Aritmética y Algebra",
+        "Geometría I",
+        "EDI",
+        "Práctica Profesional I"
+      ],
+      "2do Año": [
+        ["Historia y Política Educacional Argentina", ["Pedagogía"]],
+        ["Sociología de la Educación", ["Problemática de la Educación Secundaria"]],
+        ["Tecnologías de la Información y la Comunicación", ["Lectura, Escritura y Oralidad"]],
+        ["Sujetos de la Educación Secundaria", ["Psicología Educacional", "Problemática de la Educación Secundaria"]],
+        ["Didáctica de la Matemática I", ["Didáctica General", "Elementos de Aritmética y Algebra", "Geometría I"]],
+        ["Algebra I", ["Elementos de Aritmética y Algebra", "Geometría I"]],
+        ["Geometría II", ["Elementos de Aritmética y Algebra", "Geometría I"]],
+        ["Análisis Matemático I", ["Elementos de Aritmética y Algebra", "Geometría I"]],
+        "EDI",
+        ["Práctica Profesional II", ["Práctica Profesional I", "Pedagogía", "Lectura, Escritura y Oralidad", "Problemática de la Educación Secundaria"]]
+      ],
+      "3er Año": [
+        ["Filosofía de la Educación", ["Historia y Política Educacional Argentina"]],
+        ["Formación Ética y Ciudadana", ["Sociología de la Educación"]],
+        ["Algebra II", ["Didáctica de la Matemática I", "Algebra I", "Geometría II", "Análisis Matemático I"]],
+        ["Análisis Matemático II", ["Algebra I", "Geometría II", "Análisis Matemático I"]],
+        ["Probabilidades y Estadísticas I", ["Algebra I", "Análisis Matemático I"]],
+        ["Producción de Recursos Didácticos y Digitales para la Enseñanza", ["Tecnologías de la Información y la Comunicación"]],
+        "EDI",
+        ["Práctica Profesional III Ciclo Básico del Nivel Secundario", ["Práctica Profesional II", "Didáctica de la Matemática I"]],
+        ["Didáctica de la Matemática II", ["Didáctica de la Matemática I", "Algebra I", "Geometría II", "Análisis Matemático I"]]
+      ],
+      "4to Año": [
+        ["Educación Sexual Integral", ["Sujetos de la Educación Secundaria"]],
+        "EDI",
+        ["Transformaciones Geométricas", ["Algebra II", "Análisis Matemático II"]],
+        ["Probabilidades y Estadísticas II", ["Algebra II", "Análisis Matemático II", "Probabilidades y Estadísticas I"]],
+        ["Didáctica de la Matemática III", ["Didáctica de la Matemática II", "Algebra II", "Análisis Matemático II", "Probabilidades y Estadísticas I"]],
+        ["Historia y Epistemología de la Matemática", ["Algebra II", "Análisis Matemático II", "Didáctica de la Matemática II"]],
+        ["Análisis en Varias Variables", ["Algebra II", "Análisis Matemático II"]],
+        ["Práctica Profesional IV y Residencia Docente en el Ciclo Orientado del Nivel Secundario", ["Práctica Profesional III Ciclo Básico del Nivel Secundario", "Didáctica de la Matemática II"]]
+      ]
+    };
+
+    const approved = JSON.parse(localStorage.getItem("approvedSubjects") || "[]");
+
+    function save() {
+      localStorage.setItem("approvedSubjects", JSON.stringify(approved));
+    }
+
+    function render() {
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+      for (const [year, subjects] of Object.entries(data)) {
+        const column = document.createElement("div");
+        column.className = "column";
+        const title = document.createElement("h2");
+        title.textContent = year;
+        column.appendChild(title);
+
+        subjects.forEach(subj => {
+          const div = document.createElement("div");
+          let name = subj, reqs = [];
+          if (Array.isArray(subj)) [name, reqs] = subj;
+
+          div.className = "subject";
+          div.textContent = name;
+
+          const isApproved = approved.includes(name);
+          const locked = !reqs.every(r => approved.includes(r));
+
+          if (isApproved) div.classList.add("approved");
+          else if (locked) {
+            div.classList.add("locked");
+            div.setAttribute("data-tooltip", "Requiere:\n" + reqs.filter(r => !approved.includes(r)).join("\n"));
+          }
+
+          div.onclick = () => {
+            if (locked) return;
+            if (approved.includes(name)) {
+              approved.splice(approved.indexOf(name), 1);
+            } else {
+              approved.push(name);
+            }
+            save();
+            render();
+          };
+
+          column.appendChild(div);
+        });
+
+        grid.appendChild(column);
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
